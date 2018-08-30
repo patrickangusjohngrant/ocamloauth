@@ -20,12 +20,12 @@ type client = {
 
 (* Should this and the previous type be amalgamated? *)
 type resource = {
-	resource_id: string;
-	resource_secret: string;
+    resource_id: string;
+    resource_secret: string;
 };;
 
 let protectedResources = [{
-	resource_id="protected-resource-1";
+    resource_id="protected-resource-1";
     resource_secret="protected-resource-secret-1"
 }] |> List.map ~f:(fun x -> (x.resource_id, x)) |> String.Map.of_alist_exn;;
 
@@ -37,26 +37,26 @@ type code = {
 
 
 let clients = [{
-	client_id= "oauth-client-1";
+    client_id= "oauth-client-1";
     client_secret= "oauth-client-secret-1";
-	redirect_uris= ["http://localhost:9000/callback"];
+    redirect_uris= ["http://localhost:9000/callback"];
     scope= [ "foo"; "bar" ];
-	logo_uri= Some "https://images.manning.com/720/960/resize/book/e/14336f9-6493-46dc-938c-11a34c9d20ac/Richer-OAuth2-HI.png";
+    logo_uri= Some "https://images.manning.com/720/960/resize/book/e/14336f9-6493-46dc-938c-11a34c9d20ac/Richer-OAuth2-HI.png";
     client_name= Some "OAuth in Action Exercise Client"
 };
 {
     client_id= "oauth-client-2";
-	client_secret= "oauth-client-secret-1";
-	redirect_uris= ["http://localhost:9000/callback"];
+    client_secret= "oauth-client-secret-1";
+    redirect_uris= ["http://localhost:9000/callback"];
     logo_uri= None;
-	scope= ["bar"];
+    scope= ["bar"];
     client_name= None
 };
 {
     client_id= "native-client-1";
-	client_secret= "oauth-native-secret-1";
-	redirect_uris= ["mynativeapp://"];
-	scope= ["openid"; "profile"; "email"; "phone"; "address"];
+    client_secret= "oauth-native-secret-1";
+    redirect_uris= ["mynativeapp://"];
+    scope= ["openid"; "profile"; "email"; "phone"; "address"];
     logo_uri= None;
     client_name= None
 }] |> List.map ~f:(fun x -> (x.client_id, x)) |> String.Map.of_alist_exn;;
@@ -66,8 +66,8 @@ let authServer = Yojson.Basic.from_file "authserver.json";;
 
 (* TODO: ditto? *)
 let rec yojson_to_jingoo (x : Yojson.Basic.json) = 
-	let open Jg_types in 
-	match x with
+    let open Jg_types in 
+    match x with
     | `String x -> Tstr x
     | `Int x -> Tint x
     | `Bool x -> Tbool x
@@ -78,15 +78,15 @@ let rec yojson_to_jingoo (x : Yojson.Basic.json) =
 
 
 let client_to_jingoo (x : client) = 
-	let open Jg_types in 
-	Tobj [
-        ("client_id", 		(Tstr x.client_id));
-        ("client_secret", 	(Tstr x.client_secret));
-        ("scope", 			(Tstr (String.concat ~sep:" " x.scope)));
-        ("redirect_uris", 	(Tlist (List.map ~f:(fun x -> Jg_types.Tstr x) x.redirect_uris)));
-        ("logo_uri", 	match x.logo_uri with Some x -> Tstr x | None -> Jg_types.Tnull);
+    let open Jg_types in 
+    Tobj [
+        ("client_id",         (Tstr x.client_id));
+        ("client_secret",     (Tstr x.client_secret));
+        ("scope",             (Tstr (String.concat ~sep:" " x.scope)));
+        ("redirect_uris",     (Tlist (List.map ~f:(fun x -> Jg_types.Tstr x) x.redirect_uris)));
+        ("logo_uri",     match x.logo_uri with Some x -> Tstr x | None -> Jg_types.Tnull);
         ("client_name", match x.client_name with Some x -> Tstr x | None -> Jg_types.Tnull)
-	];;
+    ];;
 
 let default_response req body = 
     let uri = req |> Request.uri |> Uri.to_string in
@@ -132,27 +132,27 @@ let authorize req _body =
     );;
 
 let param_from_body (body:string) (key:string) =
-	(String.split ~on:'&' body |>
+    (String.split ~on:'&' body |>
     List.map ~f:(String.split ~on:'=') |>
     List.map ~f:(function [x;y] -> (x,y) | _ -> assert false) |>
     String.Map.of_alist_exn |>
     String.Map.find) key;;
 
 let param_from_body_exn body key =
-	match param_from_body body key with
-	| Some x -> x
-	| None -> assert false;;
+    match param_from_body body key with
+    | Some x -> x
+    | None -> assert false;;
 
 let approve _req body =
-	let param = param_from_body body
-	in
+    let param = param_from_body body
+    in
     let reqid = param "reqid" |> Option.value_exn in
     let `Code, client, redirect_uri, state = Hashtbl.find_exn requests reqid (* TODO: `Code or `Token *) in
     let () = Hashtbl.remove requests reqid in
     let _approve = param "approve" in
     let scopes = List.filter client.scope ~f:(fun x -> param ("scope_"^x) = Some "on")
     in
-	let code = Uuid.create () |> Uuid.to_string in
+    let code = Uuid.create () |> Uuid.to_string in
     let () = Hashtbl.set codes ~key:code ~data:{
         code_scope=scopes;
         code_client=client;
@@ -165,17 +165,17 @@ let approve _req body =
     );;
 
 let parse_http_basic req =
-	let authorization_header = (Request.headers req |> Header.get) "Authorization" |> Option.value_exn
-	in
+    let authorization_header = (Request.headers req |> Header.get) "Authorization" |> Option.value_exn
+    in
     let u_p = match String.split ~on:' ' authorization_header with
         ["Basic"; clientCredentials] -> (
-			B64.decode clientCredentials |> String.split ~on:':'
-		)
+            B64.decode clientCredentials |> String.split ~on:':'
+        )
         | _ -> assert false
-	in
-	match u_p with
-	| [username; password] -> (username, password)
-	| _ -> assert false;;
+    in
+    match u_p with
+    | [username; password] -> (username, password)
+    | _ -> assert false;;
 
 let token req body =
     (let param = param_from_body_exn body                  in
@@ -201,25 +201,25 @@ let token req body =
 let introspect req body = 
     let resource_id, resource_secret = parse_http_basic req in
     let resource = String.Map.find_exn protectedResources resource_id in
-	let () = assert (resource_secret = resource.resource_secret)
-	in
-	let param = param_from_body_exn body in
-	let token = param "token" in
-	let client, scope = Hashtbl.find_exn nosql token
-	in
-	Server.respond_string ~status:`OK
-		(`Assoc [
-			("active", `Bool true);
-			("iss", `String "http://localhost:9001/");
-			("sub", `String "wtf"); (* eh *)
-			("scope", `String (String.concat ~sep:" " scope));
-			("client_id", `String client.client_id);
-    	] |> Yojson.Basic.to_string);;
+    let () = assert (resource_secret = resource.resource_secret)
+    in
+    let param = param_from_body_exn body in
+    let token = param "token" in
+    let client, scope = Hashtbl.find_exn nosql token
+    in
+    Server.respond_string ~status:`OK
+        (`Assoc [
+            ("active", `Bool true);
+            ("iss", `String "http://localhost:9001/");
+            ("sub", `String "wtf"); (* eh *)
+            ("scope", `String (String.concat ~sep:" " scope));
+            ("client_id", `String client.client_id);
+        ] |> Yojson.Basic.to_string);;
 
 
 let callback ~body _conn req =
     Cohttp_async.Body.to_string body >>= (
-	fun body -> (
+    fun body -> (
     let path = req |> Request.uri |> Uri.path in
     let meth = req |> Request.meth in
     match path, meth with
@@ -229,7 +229,7 @@ let callback ~body _conn req =
     | "/token", `POST -> token req body
     | "/introspect", `POST -> introspect req body
     | _, _ -> default_response req body
-	))
+    ))
 
 ;;
 
